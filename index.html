@@ -1,1 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil de Energía Libre de Gibbs (G vs ξ) — Mecanismos en Perovskitas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0b0f17;
+            color: #e2e8f0;
+            user-select: none;
+        }
 
+        /* Deslizadores científicos de alta precisión */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 5px;
+            border-radius: 3px;
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-top: -6px;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+        #slider-dg::-webkit-slider-thumb {
+            background: #f43f5e;
+            border: 2px solid #0b0f17;
+            box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.45);
+        }
+        #slider-ea::-webkit-slider-thumb {
+            background: #f59e0b;
+            border: 2px solid #0b0f17;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.18);
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+        .math-serif {
+            font-family: "Times New Roman", Times, Georgia, serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased flex flex-col w-screen h-screen overflow-hidden bg-[#0b0f17] text-slate-200">
+
+    <!-- Barra Superior Compacta (Altura fija 46px) -->
+    <header class="h-[46px] shrink-0 px-4 border-b border-slate-800/90 bg-[#0d131f] flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] shrink-0"></span>
+            <h1 class="text-xs sm:text-sm font-semibold tracking-tight text-slate-100 truncate">
+                Perfil de Energía Libre de Gibbs (<span class="math-serif">G</span> vs <span class="math-serif">&xi;</span>) &mdash; Mecanismos en Perovskitas (<span class="font-mono text-sky-400">MAPbI<sub>3</sub></span>)
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-4 shrink-0">
+            <div id="header-reaction-eq" class="hidden md:block text-[11px] font-mono text-slate-400 bg-slate-900/90 px-2.5 py-1 rounded border border-slate-800">
+                MAPbI₃ + H₂O &rarr; [Complejo hidratado]<sup>&ddagger;</sup> &rarr; PbI₂ + CH₃NH₃I&middot;H₂O
+            </div>
+            <button type="button" id="btn-fullscreen" title="Alternar pantalla completa 16:9"
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                <svg id="fs-icon" class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                </svg>
+                <span id="fs-label">16:9 Full</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Área Principal Panorámica 16:9 (Altura restante exacta, sin scroll) -->
+    <main class="flex-1 min-h-0 w-full flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- Columna Izquierda (~72% ancho): Lienzo Vectorial de Alta Resolución -->
+        <section class="w-full lg:w-[72%] h-[56%] lg:h-full flex flex-col border-b lg:border-b-0 lg:border-r border-slate-800/90 bg-[#0b0f17] relative">
+            
+            <!-- Leyenda técnica flotante superior dentro del área del gráfico -->
+            <div class="h-8 shrink-0 px-4 border-b border-slate-800/60 bg-[#0b0f17]/95 flex items-center justify-between text-[11px] font-mono">
+                <span id="canvas-mech-title" class="text-sky-400 font-semibold tracking-wide uppercase">
+                    01 / HIDRÓLISIS ASISTIDA POR HUMEDAD
+                </span>
+                <div class="flex items-center gap-4 text-slate-400">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-[#f59e0b] inline-block"></span> E<sub>a</sub> (directa)
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-[#38bdf8] inline-block"></span> E<sub>a,inv</sub>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-[#f43f5e] inline-block"></span> &Delta;G
+                    </span>
+                </div>
+            </div>
+
+            <!-- Contenedor fluido del Canvas -->
+            <div id="canvas-wrapper" class="flex-1 min-h-0 w-full relative">
+                <canvas id="gibbsCanvas" class="w-full h-full block"></canvas>
+            </div>
+        </section>
+
+        <!-- Columna Derecha (~28% ancho): Únicos Controles Permitidos y Diagnóstico Compacto -->
+        <aside class="w-full lg:w-[28%] h-[44%] lg:h-full bg-[#0d131f] flex flex-col justify-between p-3.5 sm:p-4 overflow-hidden gap-2.5">
+
+            <!-- BLOQUE 1: Selector Exclusivo de Mecanismo Físico (4 pestañas) -->
+            <div class="shrink-0">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400">
+                        Mecanismo Físico / Transformación
+                    </span>
+                    <span class="text-[10px] font-mono text-slate-500">4 procesos</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5" role="tablist" aria-label="Mecanismos de degradación y transformación">
+                    <button type="button" data-mech="hydrolysis" class="mech-btn text-left px-2.5 py-2 rounded border transition focus:outline-none">
+                        <div class="text-[11px] font-bold leading-tight">1. Hidrólisis</div>
+                        <div class="text-[9.5px] font-mono opacity-75 mt-0.5 truncate">MAPbI₃ + H₂O</div>
+                    </button>
+                    <button type="button" data-mech="volatilization" class="mech-btn text-left px-2.5 py-2 rounded border transition focus:outline-none">
+                        <div class="text-[11px] font-bold leading-tight">2. Volatilización</div>
+                        <div class="text-[9.5px] font-mono opacity-75 mt-0.5 truncate">Escape CH₃NH₂ + HI</div>
+                    </button>
+                    <button type="button" data-mech="migration" class="mech-btn text-left px-2.5 py-2 rounded border transition focus:outline-none">
+                        <div class="text-[11px] font-bold leading-tight">3. Migración X⁻</div>
+                        <div class="text-[9.5px] font-mono opacity-75 mt-0.5 truncate">Difusión vacancia V<sub>I</sub><sup>&bull;</sup></div>
+                    </button>
+                    <button type="button" data-mech="phase" class="mech-btn text-left px-2.5 py-2 rounded border transition focus:outline-none">
+                        <div class="text-[11px] font-bold leading-tight">4. Transición fase</div>
+                        <div class="text-[9.5px] font-mono opacity-75 mt-0.5 truncate">Fase &alpha; &rarr; Fase &delta;</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- BLOQUE 2: ÚNICOS DOS DESLIZADORES (ΔG y Ea) -->
+            <div class="shrink-0 bg-[#111827]/90 rounded-md border border-slate-800 p-3 space-y-3">
+                <!-- Slider 1: ΔG -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <label for="slider-dg" class="text-[11px] font-semibold text-slate-200">
+                            Energía libre de reacción (<span class="math-serif">&Delta;G</span>)
+                        </label>
+                        <span id="val-dg" class="text-xs font-mono font-bold text-rose-400">-0.45 eV</span>
+                    </div>
+                    <input type="range" id="slider-dg" min="-1.50" max="1.00" step="0.01" value="-0.45">
+                    <div class="flex justify-between text-[9.5px] font-mono text-slate-500 mt-0.5">
+                        <span>-1.50 eV (Exerg.)</span>
+                        <span>0.00</span>
+                        <span>+1.00 eV (Enderg.)</span>
+                    </div>
+                </div>
+
+                <!-- Slider 2: Ea -->
+                <div class="pt-2 border-t border-slate-800/80">
+                    <div class="flex justify-between items-baseline mb-1">
+                        <label for="slider-ea" class="text-[11px] font-semibold text-slate-200">
+                            Barrera de activación (<span class="math-serif">E</span><sub>a</sub>)
+                        </label>
+                        <span id="val-ea" class="text-xs font-mono font-bold text-amber-400">0.35 eV</span>
+                    </div>
+                    <input type="range" id="slider-ea" min="0.10" max="2.00" step="0.01" value="0.35">
+                    <div class="flex justify-between text-[9.5px] font-mono text-slate-500 mt-0.5">
+                        <span>0.10 eV</span>
+                        <span id="ea-constraint-hint" class="text-slate-400">Mín. físico: 0.05 eV</span>
+                        <span>2.00 eV</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOQUE 3: Lectura Termodinámica / Cinética Compacta -->
+            <div class="flex-1 min-h-0 bg-[#111827]/70 rounded-md border border-slate-800 p-3 flex flex-col justify-between overflow-hidden">
+                <div>
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+                        <span class="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400">
+                            Parámetros del Perfil G(&xi;)
+                        </span>
+                        <span id="thermo-badge" class="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            EXERGÓNICO (&Delta;G &lt; 0)
+                        </span>
+                    </div>
+
+                    <!-- Grid 2x2 de cifras clave -->
+                    <div class="grid grid-cols-2 gap-1.5 text-xs font-mono mb-2">
+                        <div class="bg-[#0b0f17] px-2 py-1.5 rounded border border-slate-800/90">
+                            <div class="text-[9.5px] text-slate-500">&Delta;G (G<sub>fin</sub> &minus; G<sub>ini</sub>)</div>
+                            <div id="read-dg" class="font-bold text-rose-400 text-xs mt-0.5">-0.45 eV</div>
+                        </div>
+                        <div class="bg-[#0b0f17] px-2 py-1.5 rounded border border-slate-800/90">
+                            <div class="text-[9.5px] text-slate-500">Barrera directa E<sub>a</sub></div>
+                            <div id="read-ea" class="font-bold text-amber-400 text-xs mt-0.5">0.35 eV</div>
+                        </div>
+                        <div class="bg-[#0b0f17] px-2 py-1.5 rounded border border-slate-800/90">
+                            <div class="text-[9.5px] text-slate-500">Barrera inversa E<sub>a,inv</sub></div>
+                            <div id="read-eainv" class="font-bold text-sky-400 text-xs mt-0.5">0.80 eV</div>
+                        </div>
+                        <div class="bg-[#0b0f17] px-2 py-1.5 rounded border border-slate-800/90">
+                            <div class="text-[9.5px] text-slate-500">Coordenada ET (&xi;<sup>&ddagger;</sup>)</div>
+                            <div id="read-xits" class="font-bold text-slate-200 text-xs mt-0.5">0.36 <span class="text-[9.5px] font-normal text-slate-400">(Temprano)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interpretación fisicoquímica concisa -->
+                <p id="diagnostic-summary" class="text-[11px] leading-snug text-slate-300 border-t border-slate-800/80 pt-2 line-clamp-4">
+                    <!-- Generado dinámicamente -->
+                </p>
+            </div>
+
+        </aside>
+    </main>
+
+    <script>
+        /**
+         * Simulador Científico Interactivo: Perfil de Energía Libre de Gibbs G(ξ)
+         * Mecanismos de degradación y transformación estructural en perovskitas de haluro (MAPbI3).
+         * Arquitectura 100% autocontenida en formato panorámico 16:9 sin scroll.
+         */
+        (function () {
+            // Definición rigurosa de los 4 mecanismos físicos
+            const MECHANISMS = {
+                hydrolysis: {
+                    id: 'hydrolysis',
+                    code: '01 / HIDRÓLISIS ASISTIDA POR HUMEDAD',
+                    equation: 'MAPbI₃ + H₂O → [Complejo hidratado]‡ → PbI₂ + CH₃NH₃I·H₂O',
+                    initLabel: 'MAPbI₃ + H₂O',
+                    initSub: 'Red perovskita + H₂O adsorbida',
+                    tsLabel: '[Complejo hidratado]‡',
+                    tsSub: 'Ruptura enlace Pb–I asistida',
+                    finalLabel: 'PbI₂ + CH₃NH₃I·H₂O',
+                    finalSub: 'Fase hidratada / segregada',
+                    defaultDG: -0.45,
+                    defaultEa: 0.35,
+                    contextNote: 'La coordinación polar del H₂O sobre el centro metálico Pb²⁺ estabiliza el complejo activado, reduciendo drásticamente Ea (0.35 eV) y acelerando la degradación exergónica.'
+                },
+                volatilization: {
+                    id: 'volatilization',
+                    code: '02 / VOLATILIZACIÓN TÉRMICA DEL CATIÓN ORGÁNICO',
+                    equation: 'MAPbI₃(s) → [CH₃NH₂···HI]‡ → PbI₂(s) + CH₃NH₂(g) + HI(g)',
+                    initLabel: 'MAPbI₃(s)',
+                    initSub: 'Catión CH₃NH₃⁺ confinado',
+                    tsLabel: '[CH₃NH₂···HI]‡',
+                    tsSub: 'Desprotonación y desorción',
+                    finalLabel: 'PbI₂(s) + CH₃NH₂(g) + HI(g)',
+                    finalSub: 'Escape gaseoso irreversible',
+                    defaultDG: -0.25,
+                    defaultEa: 1.15,
+                    contextNote: 'Aunque la pérdida de entropía gaseosa vuelve el proceso exergónico (ΔG < 0), la elevada barrera de desprotonación y ruptura reticular (Ea ≈ 1.15 eV) confiere estabilidad cinética a temperatura ambiente.'
+                },
+                migration: {
+                    id: 'migration',
+                    code: '03 / MIGRACIÓN IÓNICA DEL HALÓGENO (VACANCIAS)',
+                    equation: 'Vacancia V_I• (sitio A) → [I⁻ punto de silla]‡ → Vacancia V_I• (sitio B)',
+                    initLabel: 'Red con vacancia V_I• (A)',
+                    initSub: 'Sitio octaédrico inicial',
+                    tsLabel: '[I⁻ punto de silla]‡',
+                    tsSub: 'Distorsión arista Pb–I–Pb',
+                    finalLabel: 'Red con vacancia V_I• (B)',
+                    finalSub: 'Sitio octaédrico equivalente',
+                    defaultDG: 0.00,
+                    defaultEa: 0.58,
+                    contextNote: 'Transporte iónico intrínseco entre sitios cristalográficos equivalentes (ΔG ≈ 0). La barrera moderada (Ea ≈ 0.58 eV) origina histéresis corriente-voltaje y redistribución de campo interno.'
+                },
+                phase: {
+                    id: 'phase',
+                    code: '04 / TRANSICIÓN DE FASE POLIMÓRFICA (α → δ)',
+                    equation: 'Perovskita α (3D) → [Rotación octaédrica PbI₆]‡ → Fase δ-amarilla (1D)',
+                    initLabel: 'Perovskita α-negra (3D)',
+                    initSub: 'Octaedros compartiendo vértices',
+                    tsLabel: '[Rotación octaédrica PbI₆]‡',
+                    tsSub: 'Reordenamiento de conectividad',
+                    finalLabel: 'Fase δ-amarilla (1D)',
+                    finalSub: 'Cadenas compartiendo aristas',
+                    defaultDG: -0.12,
+                    defaultEa: 0.42,
+                    contextNote: 'Polimorfismo reconstructivo impulsado por factor de tolerancia geométrico. Una baja barrera de inclinación octaédrica permite la conversión hacia la fase δ no fotoactiva.'
+                }
+            };
+
+            // Estado central del simulador
+            const state = {
+                mechKey: 'hydrolysis',
+                dG: MECHANISMS.hydrolysis.defaultDG,
+                Ea: MECHANISMS.hydrolysis.defaultEa
+            };
+
+            // Elementos del DOM
+            const canvas = document.getElementById('gibbsCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasWrapper = document.getElementById('canvas-wrapper');
+
+            const sliderDG = document.getElementById('slider-dg');
+            const sliderEa = document.getElementById('slider-ea');
+            const valDG = document.getElementById('val-dg');
+            const valEa = document.getElementById('val-ea');
+            const eaConstraintHint = document.getElementById('ea-constraint-hint');
+
+            const readDG = document.getElementById('read-dg');
+            const readEa = document.getElementById('read-ea');
+            const readEaInv = document.getElementById('read-eainv');
+            const readXiTS = document.getElementById('read-xits');
+            const thermoBadge = document.getElementById('thermo-badge');
+            const diagnosticSummary = document.getElementById('diagnostic-summary');
+
+            const canvasMechTitle = document.getElementById('canvas-mech-title');
+            const headerReactionEq = document.getElementById('header-reaction-eq');
+            const mechButtons = document.querySelectorAll('.mech-btn');
+            const btnFullscreen = document.getElementById('btn-fullscreen');
+            const fsLabel = document.getElementById('fs-label');
+
+            /**
+             * Aplica la restricción termodinámica física:
+             * La altura del estado de transición G(ξ‡) = Ea debe superar tanto G(0)=0 como G(1)=ΔG.
+             * Por tanto, Ea >= max(0.05, ΔG + 0.05).
+             */
+            function enforceThermodynamicConstraint() {
+                const minAllowedEa = Math.max(0.05, Number((state.dG + 0.05).toFixed(2)));
+                if (state.Ea < minAllowedEa) {
+                    state.Ea = minAllowedEa;
+                    sliderEa.value = state.Ea.toFixed(2);
+                }
+                eaConstraintHint.textContent = `Mín. físico: ${minAllowedEa.toFixed(2)} eV`;
+            }
+
+            /**
+             * Calcula el postulado de Hammond y magnitudes derivadas del perfil G(ξ).
+             * En el formalismo de Marcus / Hammond:
+             * ξ‡ = 0.5 + ΔG / (4 * (Ea_sym)), acotado suavemente en [0.15, 0.85].
+             */
+            function computeKinematics() {
+                const { dG, Ea } = state;
+                const Ea_inv = Ea - dG;
+
+                // Barrera media simétrica para estimar el desplazamiento de Hammond
+                const meanBarrier = Math.max(0.15, (Ea + Ea_inv) * 0.5);
+                let xiTS = 0.50 + 0.35 * Math.tanh(dG / (1.6 * meanBarrier));
+                xiTS = Math.max(0.14, Math.min(0.86, xiTS));
+
+                return {
+                    G_init: 0.0,
+                    G_final: dG,
+                    G_TS: Ea,
+                    dG,
+                    Ea,
+                    Ea_inv,
+                    xiTS
+                };
+            }
+
+            /**
+             * Función suave C² por tramos para el perfil de energía libre G(ξ), ξ ∈ [0, 1].
+             * Garantiza mínimos locales con derivada nula en ξ=0 y ξ=1, y máximo suave en ξ=ξ‡.
+             */
+            function evaluateGibbsCurve(xi, k) {
+                if (xi <= k.xiTS) {
+                    const u = xi / k.xiTS;
+                    // Polinomio hermítico cúbico: s(0)=0, s'(0)=0, s(1)=1, s'(1)=0
+                    const s = u * u * (3 - 2 * u);
+                    return k.G_init + (k.G_TS - k.G_init) * s;
+                } else {
+                    const u = (xi - k.xiTS) / (1 - k.xiTS);
+                    const s = u * u * (3 - 2 * u);
+                    return k.G_TS + (k.G_final - k.G_TS) * s;
+                }
+            }
+
+            /**
+             * Dibuja una flecha vertical vectorial con cabezas de precisión y etiqueta opcional.
+             */
+            function drawVerticalVector(ctx, x, yStart, yEnd, color, lineWidth = 1.75) {
+                const headLen = 7;
+                const headHalfW = 4;
+                const yTop = Math.min(yStart, yEnd);
+                const yBot = Math.max(yStart, yEnd);
+                const span = yBot - yTop;
+
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = lineWidth;
+
+                ctx.beginPath();
+                ctx.moveTo(x, yTop + (span > headLen * 2 ? headLen - 1 : 0));
+                ctx.lineTo(x, yBot - (span > headLen * 2 ? headLen - 1 : 0));
+                ctx.stroke();
+
+                if (span >= 11) {
+                    // Punta superior
+                    ctx.beginPath();
+                    ctx.moveTo(x, yTop);
+                    ctx.lineTo(x - headHalfW, yTop + headLen);
+                    ctx.lineTo(x + headHalfW, yTop + headLen);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Punta inferior
+                    ctx.beginPath();
+                    ctx.moveTo(x, yBot);
+                    ctx.lineTo(x - headHalfW, yBot - headLen);
+                    ctx.lineTo(x + headHalfW, yBot - headLen);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            /**
+             * Dibuja una píldora de texto técnico con fondo semitransparente para máxima legibilidad sobre la rejilla.
+             */
+            function drawCalloutPill(ctx, text, x, y, textColor, borderColor, align = 'center') {
+                ctx.save();
+                ctx.font = '600 11.5px "JetBrains Mono", monospace';
+                const metrics = ctx.measureText(text);
+                const padX = 7;
+                const boxW = metrics.width + padX * 2;
+                const boxH = 20;
+
+                let drawX = x - boxW / 2;
+                if (align === 'left') drawX = x;
+                if (align === 'right') drawX = x - boxW;
+                const drawY = y - boxH / 2;
+
+                ctx.fillStyle = 'rgba(11, 15, 23, 0.92)';
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(drawX, drawY, boxW, boxH, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = textColor;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, drawX + boxW / 2, y + 0.5);
+                ctx.restore();
+            }
+
+            /**
+             * Renderizado de alta precisión del gráfico G(ξ) en HTML5 Canvas.
+             */
+            function renderCanvas() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvasWrapper.getBoundingClientRect();
+                const W = rect.width;
+                const H = rect.height;
+                if (W === 0 || H === 0) return;
+
+                canvas.width = Math.round(W * dpr);
+                canvas.height = Math.round(H * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                const k = computeKinematics();
+                const mech = MECHANISMS[state.mechKey];
+
+                // Márgenes calibrados para etiquetas químicas completas sin recortes
+                const padLeft = 72;
+                const padRight = 46;
+                const padTop = 44;
+                const padBottom = 56;
+
+                const plotW = W - padLeft - padRight;
+                const plotH = H - padTop - padBottom;
+
+                // Escala vertical adaptativa pero estable (eV)
+                const yMin = Math.min(-1.65, k.G_final - 0.30);
+                const yMax = Math.max(2.15, k.G_TS + 0.35);
+                const ySpan = yMax - yMin;
+
+                const toX = (xi) => padLeft + xi * plotW;
+                const toY = (g) => padTop + ((yMax - g) / ySpan) * plotH;
+
+                // Fondo oscuro de laboratorio
+                ctx.fillStyle = '#0b0f17';
+                ctx.fillRect(0, 0, W, H);
+
+                // Rejilla milimetrada sutil (subdivisiones cada 0.25 eV y 0.05 en ξ)
+                ctx.save();
+                ctx.strokeStyle = '#131b2b';
+                ctx.lineWidth = 0.75;
+                for (let xi = 0; xi <= 1.001; xi += 0.05) {
+                    const x = toX(xi);
+                    ctx.beginPath();
+                    ctx.moveTo(x, padTop);
+                    ctx.lineTo(x, padTop + plotH);
+                    ctx.stroke();
+                }
+                const minorStart = Math.ceil(yMin / 0.25) * 0.25;
+                for (let g = minorStart; g <= yMax; g += 0.25) {
+                    const y = toY(g);
+                    ctx.beginPath();
+                    ctx.moveTo(padLeft, y);
+                    ctx.lineTo(padLeft + plotW, y);
+                    ctx.stroke();
+                }
+
+                // Rejilla principal (#1e293b) cada 0.5 eV y 0.2 en ξ
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                const majorStart = Math.ceil(yMin / 0.5) * 0.5;
+                for (let g = majorStart; g <= yMax; g += 0.5) {
+                    const y = toY(g);
+                    ctx.beginPath();
+                    ctx.moveTo(padLeft, y);
+                    ctx.lineTo(padLeft + plotW, y);
+                    ctx.stroke();
+
+                    // Ticks eje Y
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '500 11px "JetBrains Mono", monospace';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    const labelVal = Math.abs(g) < 1e-6 ? '0.0' : (g > 0 ? `+${g.toFixed(1)}` : g.toFixed(1));
+                    ctx.fillText(labelVal, padLeft - 10, y);
+                }
+
+                for (let xi = 0; xi <= 1.001; xi += 0.2) {
+                    const x = toX(xi);
+                    ctx.beginPath();
+                    ctx.moveTo(x, padTop);
+                    ctx.lineTo(x, padTop + plotH);
+                    ctx.stroke();
+
+                    // Ticks eje X
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '500 11px "JetBrains Mono", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(xi.toFixed(1), x, padTop + plotH + 8);
+                }
+                ctx.restore();
+
+                // Ejes coordenados principales
+                ctx.save();
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(padLeft, padTop);
+                ctx.lineTo(padLeft, padTop + plotH);
+                ctx.lineTo(padLeft + plotW, padTop + plotH);
+                ctx.stroke();
+
+                // Etiquetas de los ejes
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '600 12px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Coordenada de Reacción (ξ)', padLeft + plotW / 2, H - 14);
+
+                ctx.save();
+                ctx.translate(18, padTop + plotH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Energía Libre de Gibbs, G (eV)', 0, 0);
+                ctx.restore();
+                ctx.restore();
+
+                // Coordenadas en píxeles de los estados clave
+                const x0 = toX(0);
+                const y0 = toY(k.G_init);
+                const x1 = toX(1);
+                const y1 = toY(k.G_final);
+                const xTS = toX(k.xiTS);
+                const yTS = toY(k.G_TS);
+
+                // Líneas horizontales de proyección de niveles energéticos
+                ctx.save();
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 1.1;
+
+                // Nivel basal G(0) = 0 eV extendido a todo el dominio
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y0);
+                ctx.stroke();
+
+                // Nivel Estado de Transición G(ξ‡)
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.50)';
+                ctx.beginPath();
+                ctx.moveTo(toX(Math.max(0.05, k.xiTS - 0.24)), yTS);
+                ctx.lineTo(toX(Math.min(0.95, k.xiTS + 0.24)), yTS);
+                ctx.stroke();
+
+                // Nivel Estado Final G(1)
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+                ctx.beginPath();
+                ctx.moveTo(toX(Math.min(0.76, k.xiTS + 0.08)), y1);
+                ctx.lineTo(x1, y1);
+                ctx.stroke();
+
+                // Proyección vertical de ξ‡ sobre el eje X
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+                ctx.beginPath();
+                ctx.moveTo(xTS, yTS);
+                ctx.lineTo(xTS, padTop + plotH);
+                ctx.stroke();
+                ctx.restore();
+
+                // Área sutil bajo la curva para dar profundidad técnica
+                ctx.save();
+                const grad = ctx.createLinearGradient(0, yTS, 0, padTop + plotH);
+                grad.addColorStop(0, 'rgba(56, 189, 248, 0.14)');
+                grad.addColorStop(1, 'rgba(56, 189, 248, 0.00)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(x0, padTop + plotH);
+                const samples = 260;
+                for (let i = 0; i <= samples; i++) {
+                    const xi = i / samples;
+                    ctx.lineTo(toX(xi), toY(evaluateGibbsCurve(xi, k)));
+                }
+                ctx.lineTo(x1, padTop + plotH);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                // Curva principal de Energía Libre de Gibbs G(ξ)
+                ctx.save();
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = 'rgba(56, 189, 248, 0.35)';
+                ctx.shadowBlur = 8;
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                for (let i = 0; i <= samples; i++) {
+                    const xi = i / samples;
+                    const px = toX(xi);
+                    const py = toY(evaluateGibbsCurve(xi, k));
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // --- COTAS VECTORIALES EN TIEMPO REAL ---
+
+                // 1. Cota Ea (Barrera directa: de y0 a yTS)
+                const xArrowEa = toX(Math.max(0.08, k.xiTS - 0.15));
+                drawVerticalVector(ctx, xArrowEa, y0, yTS, '#f59e0b', 1.85);
+                drawCalloutPill(
+                    ctx,
+                    `Ea = ${k.Ea.toFixed(2)} eV`,
+                    xArrowEa - 8,
+                    (y0 + yTS) / 2,
+                    '#fbbf24',
+                    'rgba(245, 158, 11, 0.45)',
+                    'right'
+                );
+
+                // 2. Cota Ea,inv (Barrera inversa: de y1 a yTS)
+                const xArrowEaInv = toX(Math.min(0.88, k.xiTS + 0.15));
+                drawVerticalVector(ctx, xArrowEaInv, y1, yTS, '#38bdf8', 1.75);
+                drawCalloutPill(
+                    ctx,
+                    `Ea,inv = ${k.Ea_inv.toFixed(2)} eV`,
+                    xArrowEaInv + 8,
+                    (y1 + yTS) / 2,
+                    '#7dd3fc',
+                    'rgba(56, 189, 248, 0.45)',
+                    'left'
+                );
+
+                // 3. Cota ΔG (Diferencia termodinámica: de y0 a y1 cerca de ξ = 0.96)
+                const xArrowDG = toX(0.96);
+                const dgColor = k.dG < -0.015 ? '#f43f5e' : (k.dG > 0.015 ? '#10b981' : '#94a3b8');
+                const dgTextColor = k.dG < -0.015 ? '#fda4af' : (k.dG > 0.015 ? '#6ee7b7' : '#cbd5e1');
+                if (Math.abs(k.dG) >= 0.03) {
+                    drawVerticalVector(ctx, xArrowDG, y0, y1, dgColor, 1.85);
+                }
+                const dgSign = k.dG > 0.001 ? '+' : '';
+                const dgYOffset = Math.abs(k.dG) < 0.12 ? (k.dG >= 0 ? -15 : 15) : 0;
+                drawCalloutPill(
+                    ctx,
+                    `ΔG = ${dgSign}${k.dG.toFixed(2)} eV`,
+                    xArrowDG - 8,
+                    (y0 + y1) / 2 + dgYOffset,
+                    dgTextColor,
+                    dgColor,
+                    'right'
+                );
+
+                // --- NODOS Y ETIQUETAS QUÍMICAS DE LOS ESTADOS ---
+                function drawChemicalState(x, y, dotColor, ringColor, title, subtitle, align, yShift) {
+                    ctx.save();
+                    // Punto nodal
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+                    ctx.fillStyle = dotColor;
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = ringColor;
+                    ctx.stroke();
+
+                    // Texto químico principal
+                    ctx.font = '700 12px "Inter", sans-serif';
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.textAlign = align;
+                    ctx.textBaseline = 'bottom';
+                    const xOff = align === 'left' ? 10 : (align === 'right' ? -10 : 0);
+                    ctx.fillText(title, x + xOff, y + yShift);
+
+                    // Subtítulo descriptivo
+                    ctx.font = '400 10.5px "JetBrains Mono", monospace';
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText(subtitle, x + xOff, y + yShift + 14);
+                    ctx.restore();
+                }
+
+                // Estado Inicial (ξ = 0)
+                const initShift = k.Ea < 0.35 ? 28 : -16;
+                drawChemicalState(x0, y0, '#0b0f17', '#38bdf8', mech.initLabel, mech.initSub, 'left', initShift);
+
+                // Estado de Transición (ξ = ξ‡)
+                drawChemicalState(xTS, yTS, '#f59e0b', '#0b0f17', mech.tsLabel, `${mech.tsSub} (ξ‡ = ${k.xiTS.toFixed(2)})`, 'center', -20);
+
+                // Estado Final (ξ = 1)
+                const finalShift = k.dG > 0.55 ? 28 : -16;
+                drawChemicalState(x1, y1, '#0b0f17', dgColor, mech.finalLabel, mech.finalSub, 'right', finalShift);
+
+                // Indicador ξ‡ sobre eje X
+                ctx.save();
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = '700 11px "JetBrains Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`ξ‡=${k.xiTS.toFixed(2)}`, xTS, padTop + plotH - 4);
+                ctx.restore();
+            }
+
+            /**
+             * Sincroniza todos los valores numéricos, insignias y diagnóstico técnico.
+             */
+            function updateInterface() {
+                enforceThermodynamicConstraint();
+                const k = computeKinematics();
+                const mech = MECHANISMS[state.mechKey];
+
+                // Actualizar cabecera y títulos
+                canvasMechTitle.textContent = mech.code;
+                headerReactionEq.textContent = mech.equation;
+
+                // Actualizar estilos de botones de mecanismo
+                mechButtons.forEach((btn) => {
+                    const isSelected = btn.getAttribute('data-mech') === state.mechKey;
+                    if (isSelected) {
+                        btn.className = 'mech-btn text-left px-2.5 py-2 rounded border border-sky-400 bg-sky-500/15 text-slate-100 shadow-[inset_0_0_12px_rgba(56,189,248,0.12)] transition focus:outline-none';
+                    } else {
+                        btn.className = 'mech-btn text-left px-2.5 py-2 rounded border border-slate-800 bg-[#111827]/70 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition focus:outline-none';
+                    }
+                });
+
+                // Formateo de cifras
+                const dgSign = k.dG > 0.001 ? '+' : '';
+                const dgFormatted = `${dgSign}${k.dG.toFixed(2)} eV`;
+                const eaFormatted = `${k.Ea.toFixed(2)} eV`;
+                const eaInvFormatted = `${k.Ea_inv.toFixed(2)} eV`;
+
+                valDG.textContent = dgFormatted;
+                valEa.textContent = eaFormatted;
+                readDG.textContent = dgFormatted;
+                readEa.textContent = eaFormatted;
+                readEaInv.textContent = eaInvFormatted;
+
+                // Clasificación de Hammond para ξ‡
+                let hammondText = 'Simétrico';
+                if (k.xiTS < 0.42) hammondText = 'Temprano';
+                else if (k.xiTS > 0.58) hammondText = 'Tardío';
+                readXiTS.innerHTML = `${k.xiTS.toFixed(2)} <span class="text-[9.5px] font-normal text-slate-400">(${hammondText})</span>`;
+
+                // Insignia de carácter termodinámico
+                let regimeDesc = '';
+                if (k.dG < -0.02) {
+                    thermoBadge.textContent = 'EXERGÓNICO (ΔG < 0)';
+                    thermoBadge.className = 'px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                    readDG.className = 'font-bold text-rose-400 text-xs mt-0.5';
+                    valDG.className = 'text-xs font-mono font-bold text-rose-400';
+                    regimeDesc = k.Ea >= 0.85
+                        ? `Proceso termodinámicamente espontáneo (ΔG = ${dgFormatted}), pero retenido cinéticamente por una alta barrera (Ea = ${eaFormatted}). `
+                        : `Proceso exergónico (ΔG = ${dgFormatted}) con barrera accesible (Ea = ${eaFormatted}), favoreciendo una evolución rápida hacia productos. `;
+                } else if (k.dG > 0.02) {
+                    thermoBadge.textContent = 'ENDERGÓNICO (ΔG > 0)';
+                    thermoBadge.className = 'px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                    readDG.className = 'font-bold text-emerald-400 text-xs mt-0.5';
+                    valDG.className = 'text-xs font-mono font-bold text-emerald-400';
+                    regimeDesc = `Proceso no espontáneo (ΔG = ${dgFormatted}); los reactivos son más estables y la barrera directa (Ea = ${eaFormatted}) supera la inversa (Ea,inv = ${eaInvFormatted}). `;
+                } else {
+                    thermoBadge.textContent = 'TERMONEUTRO (ΔG ≈ 0)';
+                    thermoBadge.className = 'px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-slate-700/40 text-slate-300 border border-slate-600/50';
+                    readDG.className = 'font-bold text-slate-200 text-xs mt-0.5';
+                    valDG.className = 'text-xs font-mono font-bold text-slate-200';
+                    regimeDesc = `Equilibrio energético entre estados (ΔG ≈ 0 eV); velocidad gobernada simétricamente por Ea = ${eaFormatted} (ξ‡ = ${k.xiTS.toFixed(2)}). `;
+                }
+
+                diagnosticSummary.textContent = regimeDesc + mech.contextNote;
+
+                renderCanvas();
+            }
+
+            // Eventos de selección de mecanismo
+            mechButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const key = btn.getAttribute('data-mech');
+                    const mech = MECHANISMS[key];
+                    if (!mech) return;
+
+                    state.mechKey = key;
+                    state.dG = mech.defaultDG;
+                    state.Ea = mech.defaultEa;
+
+                    sliderDG.value = state.dG.toFixed(2);
+                    sliderEa.value = state.Ea.toFixed(2);
+                    updateInterface();
+                });
+            });
+
+            // Eventos de los dos únicos sliders (ΔG y Ea)
+            sliderDG.addEventListener('input', (e) => {
+                state.dG = parseFloat(e.target.value);
+                updateInterface();
+            });
+
+            sliderEa.addEventListener('input', (e) => {
+                state.Ea = parseFloat(e.target.value);
+                updateInterface();
+            });
+
+            // Botón Fullscreen API real
+            btnFullscreen.addEventListener('click', async () => {
+                try {
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                    } else {
+                        await document.exitFullscreen();
+                    }
+                } catch (err) {
+                    // Fallback silencioso si el contenedor restringe Fullscreen API
+                }
+            });
+
+            document.addEventListener('fullscreenchange', () => {
+                fsLabel.textContent = document.fullscreenElement ? 'Salir Full' : '16:9 Full';
+                renderCanvas();
+            });
+
+            // Observador de redimensionamiento para ajuste fluido instantáneo
+            const resizeObserver = new ResizeObserver(() => {
+                renderCanvas();
+            });
+            resizeObserver.observe(canvasWrapper);
+
+            window.addEventListener('load', updateInterface);
+            updateInterface();
+        })();
+    </script>
+</body>
+</html>
